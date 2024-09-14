@@ -1,0 +1,54 @@
+import torch
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
+
+# Load the pre-trained GPT-2 model and tokenizer
+model = GPT2LMHeadModel.from_pretrained('gpt2')
+tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+
+# Explicitly set the pad token in the tokenizer and model configuration
+tokenizer.pad_token = tokenizer.eos_token
+model.config.pad_token_id = tokenizer.pad_token_id
+
+# Define a function to generate text
+def generate_text(prompt, max_length=50):
+    input_ids = tokenizer.encode(prompt, return_tensors='pt')
+    attention_mask = torch.ones(input_ids.shape, dtype=torch.long)
+
+    # Generate text using the model
+    outputs = model.generate(
+    input_ids, 
+    attention_mask=attention_mask, 
+    max_length=max_length, 
+    num_return_sequences=1,
+    no_repeat_ngram_size=3,
+    repetition_penalty=2.0,
+    top_k=40,  # Enable top_k sampling
+    top_p=0.9,  # Enable nucleus sampling
+    temperature=0.7,  # Apply temperature scaling
+    do_sample=True,  # Enable sampling
+    pad_token_id=tokenizer.pad_token_id,
+    eos_token_id=tokenizer.eos_token_id
+)
+
+    
+    
+    # Decode the generated sequence to text
+    generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+    # Post-process to remove unwanted content
+    generated_text = generated_text.strip()
+    if "abusive" in generated_text.lower():
+        generated_text = "I'm sorry, I can't respond to that."
+
+    return generated_text
+
+# Create a chatbot function
+def chatbot(user_input):
+    response = generate_text(user_input)
+    return response
+
+# Test the chatbot
+while True:
+    user_input = input("You: ")
+    response = chatbot(user_input)
+    print(f"Bot: {response}")
